@@ -1,0 +1,15 @@
+ZONE,LATITUDE_CENTER,LONGITUDE_CENTER,DESCRIPTION
+Centro,"25,6823","-100,3185",Downtown Monterrey – high-density commercial/residential
+Mitras Centro,"25,7240","-100,3618",Traditional residential/commercial neighbourhood
+Apodaca Centro,"25,7879","-100,2054","Suburban municipality, industrial mix"
+Escobedo,"25,8076","-100,3086",Northern residential suburb
+Carretera Nacional,"25,5487","-100,2320","Highway corridor south – open roads, fast-food clusters"
+MTY_Apodaca_Huinalá,"25,7166","-100,1367",Industrial/logistics northern zone
+San Nicolás,"25,7411","-100,2848",Large residential municipality
+Santa Catarina,"25,6884","-100,4615","Western suburb, hilly terrain (~150m above valley)"
+San Pedro,"25,6461","-100,3729","Affluent municipality, high average ticket (~100m above valley)"
+Cumbres Poniente,"25,7800","-100,4261","Residential west, newer developments (~80m above valley)"
+La Fe,"25,7105","-100,2540",Eastern residential zone
+MTY_Guadalupe,"25,6466","-100,1644","Eastern municipality, mixed residential"
+Independencia,"25,6583","-100,3190","Working-class neighbourhood, high order density"
+Santiago,"25,4246","-100,1522",Mountain/rural south – highway access only (~500m elevation)

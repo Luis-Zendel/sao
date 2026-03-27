@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+/* Class-based dark mode for Tailwind v4 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ─── Light theme (default) ─── */
+:root {
+  --bg:        #f8fafc;
+  --surface:   #ffffff;
+  --surface-2: #f1f5f9;
+  --surface-3: #e8edf5;
+  --border:    #e2e8f0;
+  --txt:       #0f172a;
+  --txt-2:     #475569;
+  --txt-3:     #94a3b8;
+}
+
+/* ─── Dark theme ─── */
+.dark {
+  --bg:        #0a0a0f;
+  --surface:   #12121a;
+  --surface-2: #1a1a24;
+  --surface-3: #0f0f18;
+  --border:    #2a2a38;
+  --txt:       #f1f5f9;
+  --txt-2:     #94a3b8;
+  --txt-3:     #4b5563;
+}
+
+body {
+  background: var(--bg);
+  color: var(--txt);
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track  { background: var(--surface-2); }
+::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 3px; }
+
+/* Leaflet overrides */
+.leaflet-container {
+  font-family: inherit;
+  background: var(--surface-2);
+}
+.leaflet-popup-content-wrapper {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
+  color: var(--txt) !important;
+}
+.leaflet-popup-tip {
+  background: var(--surface) !important;
+}
+.leaflet-popup-close-button {
+  color: var(--txt-3) !important;
+}
+.leaflet-control-zoom a {
+  background: var(--surface) !important;
+  color: var(--txt) !important;
+  border-color: var(--border) !important;
+}
+.leaflet-control-zoom a:hover {
+  background: var(--surface-2) !important;
+}
+.leaflet-control-attribution {
+  background: var(--surface) !important;
+  color: var(--txt-3) !important;
+  font-size: 9px !important;
+}
+.leaflet-zone-tooltip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 6px;
+  color: var(--txt);
+}
+
+/* Recharts tooltip */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10) !important;
+}

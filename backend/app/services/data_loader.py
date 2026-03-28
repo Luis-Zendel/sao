@@ -80,18 +80,52 @@ def load_zone_info() -> pd.DataFrame:
     return df
 
 
+def _repair_truncated_wkt(wkt_str: str, zone_name: str) -> str:
+    """
+    Fix WKT polygons truncated at Excel's 32,767-char cell limit.
+    Strategy: remove the trailing incomplete coordinate, then close the
+    ring by repeating the first coordinate (required by WKT spec).
+    """
+    import re as _re
+    if len(wkt_str) < 32767:
+        return wkt_str  # not truncated
+
+    logger.warning(
+        f"Zone '{zone_name}': WKT truncated at {len(wkt_str)} chars (Excel 32,767 limit). "
+        "Attempting auto-repair by closing the polygon ring."
+    )
+
+    # Extract first coordinate pair from the polygon opening
+    first_match = _re.search(r"POLYGON \(\((-?\d+\.\d+ -?\d+\.\d+)", wkt_str)
+    first_coord = first_match.group(1) if first_match else None
+
+    # Drop the last incomplete coordinate token (a partial number at the end)
+    fixed = _re.sub(r",\s*-?\d+\.?\d*\s*$", "", wkt_str.rstrip()).rstrip(", ")
+
+    # Close the linear ring with the first point, then close all parens
+    suffix = f", {first_coord}))" if first_coord else "))"
+    return fixed + suffix
+
+
 @lru_cache(maxsize=1)
 def load_zone_polygons() -> dict:
     """Load zone polygons as Shapely geometries. Returns {zone_name: geometry}."""
+    from shapely.validation import make_valid
+
     path = os.path.join(DATA_DIR, "ZONE_POLYGONS.csv")
     df = pd.read_csv(path)
     polygons = {}
     for _, row in df.iterrows():
+        zone_name = row.get("ZONE_NAME", "unknown")
+        raw_wkt   = row["GEOMETRY_WKT"]
         try:
-            geom = wkt.loads(row["GEOMETRY_WKT"])
-            polygons[row["ZONE_NAME"]] = geom
+            repaired = _repair_truncated_wkt(raw_wkt, zone_name)
+            geom = wkt.loads(repaired)
+            if not geom.is_valid:
+                geom = make_valid(geom)
+            polygons[zone_name] = geom
         except Exception as e:
-            logger.warning(f"Failed to parse polygon for zone {row.get('ZONE_NAME')}: {e}")
+            logger.warning(f"Failed to parse polygon for zone {zone_name}: {e}")
     logger.info(f"Loaded {len(polygons)} zone polygons")
     return polygons
 

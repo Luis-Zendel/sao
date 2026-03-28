@@ -34,7 +34,24 @@ export default function ZoneMapLeaflet({ geojson }: Props) {
 
   // ── First mount: initialise map ──────────────────────────────────────────
   useEffect(() => {
-    if (!mapRef.current || leafletRef.current) return;
+    if (!mapRef.current) return;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const container = mapRef.current as any;
+
+    // React StrictMode mounts twice in dev. If Leaflet left a _leaflet_id
+    // on the DOM node from the first mount, remove that map before re-creating.
+    if (container._leaflet_id) {
+      if (leafletRef.current) {
+        (leafletRef.current as { remove: () => void }).remove();
+        leafletRef.current = null;
+      } else {
+        // _leaflet_id exists but we lost the ref — clear it manually
+        delete container._leaflet_id;
+      }
+    }
+
+    if (leafletRef.current) return; // already initialised in this cycle
 
     (async () => {
       const L = (await import("leaflet")).default;
@@ -78,6 +95,7 @@ export default function ZoneMapLeaflet({ geojson }: Props) {
       if (leafletRef.current) {
         (leafletRef.current as { remove: () => void }).remove();
         leafletRef.current = null;
+        tileRef.current    = null;
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

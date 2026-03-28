@@ -5,10 +5,14 @@ env/
 ENV/
 .env.local
 *.egg-info/
+
+# __pycache__ en cualquier nivel de subdirectorio
 __pycache__/
+**/__pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.pycache
 .Python
 build/
 dist/

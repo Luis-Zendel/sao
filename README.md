@@ -12,7 +12,7 @@ Open-Meteo (clima) → Motor de Alertas → Gemini AI → Telegram
 ```
 
 **Stack:**
-- **Frontend**: Next.js 14 + Tailwind CSS + Recharts
+- **Frontend**: Next.js 16 + Tailwind CSS + Recharts
 - **Backend**: FastAPI (Python 3.11) + Pandas + Shapely
 - **LLM**: Google Gemini Flash
 - **Weather**: Open-Meteo (gratuito, sin API key)

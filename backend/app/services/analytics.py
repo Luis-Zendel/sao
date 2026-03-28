@@ -23,57 +23,79 @@ HEALTHY_MAX = 1.2
 # ---------------------------------------------------------------------------
 # P1: Saturation heatmap — which hours and zones reach critical levels?
 # ---------------------------------------------------------------------------
+def _sat_pct(x):
+    return (x > SATURATION_THRESHOLD).mean() * 100
+
+
+def _over_pct(x):
+    return ((x < OVERSUPPLY_THRESHOLD) & x.notna()).mean() * 100
+
+
 def get_p1_saturation_heatmap() -> dict[str, Any]:
     df = load_raw_data()
 
+    # Zone × hour pivot: ratio_mean, saturation_pct, oversupply_pct
     pivot = (
         df.groupby(["ZONE", "HOUR"])["RATIO"]
-        .agg(["mean", "median", lambda x: (x > SATURATION_THRESHOLD).mean() * 100])
+        .agg(
+            ratio_mean="mean",
+            ratio_median="median",
+            saturation_pct=_sat_pct,
+            oversupply_pct=_over_pct,
+        )
         .reset_index()
+        .rename(columns={"ZONE": "zone", "HOUR": "hour"})
     )
-    pivot.columns = ["zone", "hour", "ratio_mean", "ratio_median", "saturation_pct"]
 
-    # Top 5 zone×hour combos by saturation %
+    # Heatmap data: one record per zone×hour
+    heatmap_data = pivot[
+        ["zone", "hour", "ratio_mean", "saturation_pct", "oversupply_pct"]
+    ].to_dict(orient="records")
+
+    # Top 10 zone×hour combos by saturation %
     top_critical = (
         pivot.sort_values("saturation_pct", ascending=False)
         .head(10)
         .to_dict(orient="records")
     )
 
-    # Overall saturation by hour (aggregated across all zones)
+    # Saturation by hour (all zones aggregated)
     hourly = (
         df.groupby("HOUR")["RATIO"]
         .agg(
             ratio_mean="mean",
-            saturation_pct=lambda x: (x > SATURATION_THRESHOLD).mean() * 100,
+            saturation_pct=_sat_pct,
+            oversupply_pct=_over_pct,
         )
         .reset_index()
         .rename(columns={"HOUR": "hour"})
         .to_dict(orient="records")
     )
 
-    # Overall saturation by zone
+    # Saturation + oversupply by zone
     by_zone = (
         df.groupby("ZONE")["RATIO"]
         .agg(
             ratio_mean="mean",
-            saturation_pct=lambda x: (x > SATURATION_THRESHOLD).mean() * 100,
+            saturation_pct=_sat_pct,
             saturation_hours=lambda x: (x > SATURATION_THRESHOLD).sum(),
+            oversupply_pct=_over_pct,
+            oversupply_hours=lambda x: ((x < OVERSUPPLY_THRESHOLD) & x.notna()).sum(),
         )
         .reset_index()
         .rename(columns={"ZONE": "zone"})
         .to_dict(orient="records")
     )
 
-    # Heatmap data: list of {zone, hour, value}
-    heatmap_data = pivot[["zone", "hour", "ratio_mean", "saturation_pct"]].to_dict(
-        orient="records"
-    )
-
-    # Key finding quantification
-    peak_hour = pivot.groupby("hour")["saturation_pct"].mean().idxmax()
-    peak_zone = pivot.groupby("zone")["saturation_pct"].mean().idxmax()
+    # Key findings — saturation
+    peak_sat_hour = pivot.groupby("hour")["saturation_pct"].mean().idxmax()
+    peak_sat_zone = pivot.groupby("zone")["saturation_pct"].mean().idxmax()
     overall_sat_pct = (df["RATIO"] > SATURATION_THRESHOLD).mean() * 100
+
+    # Key findings — oversupply
+    peak_over_hour = pivot.groupby("hour")["oversupply_pct"].mean().idxmax()
+    peak_over_zone = pivot.groupby("zone")["oversupply_pct"].mean().idxmax()
+    overall_over_pct = ((df["RATIO"] < OVERSUPPLY_THRESHOLD) & df["RATIO"].notna()).mean() * 100
 
     return {
         "heatmap": heatmap_data,
@@ -81,10 +103,14 @@ def get_p1_saturation_heatmap() -> dict[str, Any]:
         "zone_summary": by_zone,
         "top_critical_slots": top_critical,
         "key_findings": {
-            "peak_saturation_hour": int(peak_hour),
-            "most_saturated_zone": peak_zone,
+            "peak_saturation_hour": int(peak_sat_hour),
+            "most_saturated_zone": peak_sat_zone,
             "overall_saturation_pct": round(float(overall_sat_pct), 2),
             "saturation_threshold": SATURATION_THRESHOLD,
+            "peak_oversupply_hour": int(peak_over_hour),
+            "most_oversupply_zone": peak_over_zone,
+            "overall_oversupply_pct": round(float(overall_over_pct), 2),
+            "oversupply_threshold": OVERSUPPLY_THRESHOLD,
         },
     }
 

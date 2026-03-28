@@ -120,7 +120,7 @@ export default function AgentePage() {
             {/* Status cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <StatusCard icon={Activity}      label="Estado"   val={status?.running ? "Activo" : "Inactivo"}   sub={`Cada ${status?.scheduler_interval_minutes} min`}   ok={!!status?.running} />
-              <StatusCard icon={Bot}           label="Gemini"   val={status?.gemini_configured ? "Configurado" : "Sin API Key"} sub="Gemini 1.5 Flash"          ok={!!status?.gemini_configured} />
+              <StatusCard icon={Bot}           label="Gemini"   val={status?.gemini_configured ? "Configurado" : "Sin API Key"} sub="Gemini 2.5 Flash"          ok={!!status?.gemini_configured} />
               <StatusCard icon={Send}          label="Telegram" val={status?.telegram_configured ? "Configurado" : "Sin config"} sub="Bot API"                  ok={!!status?.telegram_configured} />
               <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
                 <div className="flex items-center gap-2 mb-1">

@@ -36,26 +36,30 @@ export default function ZoneMapLeaflet({ geojson }: Props) {
   useEffect(() => {
     if (!mapRef.current) return;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const container = mapRef.current as any;
-
-    // React StrictMode mounts twice in dev. If Leaflet left a _leaflet_id
-    // on the DOM node from the first mount, remove that map before re-creating.
-    if (container._leaflet_id) {
-      if (leafletRef.current) {
-        (leafletRef.current as { remove: () => void }).remove();
-        leafletRef.current = null;
-      } else {
-        // _leaflet_id exists but we lost the ref — clear it manually
-        delete container._leaflet_id;
-      }
-    }
-
-    if (leafletRef.current) return; // already initialised in this cycle
+    let cancelled = false;
 
     (async () => {
       const L = (await import("leaflet")).default;
       await import("leaflet/dist/leaflet.css");
+
+      // Bail out if the effect was cleaned up while we were awaiting imports.
+      // This is the key guard against StrictMode's double-mount race condition.
+      if (cancelled) return;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const container = mapRef.current as any;
+
+      // If a previous Leaflet instance left its id on the DOM node, destroy it.
+      if (container._leaflet_id) {
+        if (leafletRef.current) {
+          (leafletRef.current as { remove: () => void }).remove();
+          leafletRef.current = null;
+        } else {
+          delete container._leaflet_id;
+        }
+      }
+
+      if (leafletRef.current) return;
 
       // Fix default icon path broken by bundlers
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -92,6 +96,7 @@ export default function ZoneMapLeaflet({ geojson }: Props) {
 
     // Cleanup on unmount
     return () => {
+      cancelled = true;
       if (leafletRef.current) {
         (leafletRef.current as { remove: () => void }).remove();
         leafletRef.current = null;

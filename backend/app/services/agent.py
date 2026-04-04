@@ -142,7 +142,13 @@ async def send_daily_summary() -> dict[str, Any]:
         if e.get("alert_time", "").startswith(date.today().isoformat())
     ]
 
-    message = await generate_daily_summary(today_events, today)
+    # Split events into confirmed (rain present at alert time) vs forecast-only
+    confirmed = [e for e in today_events if e.get("current_precipitation_mm", 0) > 0]
+    preventive = [e for e in today_events if e.get("current_precipitation_mm", 0) == 0]
+
+    message = await generate_daily_summary(
+        today_events, today, len(confirmed), len(preventive)
+    )
     result = await send_message(message)
 
     _log_event(

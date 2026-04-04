@@ -111,7 +111,7 @@ export function P2CorrelationChart({ data }: { data: unknown }) {
               <Tooltip
                 contentStyle={TT}
                 cursor={{ stroke: "#e2e8f0" }}
-                formatter={(v: unknown, name: string) => [
+                formatter={(v: unknown, name: unknown) => [
                   name === "PRECIPITATION_MM"
                     ? `${(v as number)?.toFixed(2)} mm/hr`
                     : (v as number)?.toFixed(3),

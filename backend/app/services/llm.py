@@ -33,6 +33,7 @@ def _build_prompt(alert: dict[str, Any]) -> str:
     historical = alert.get("historical_context", [])
     secondary = alert.get("secondary_zones", [])
     window = alert.get("action_window_minutes", 60)
+    sensitivity_tier = alert.get("sensitivity_tier", "media")
 
     hist_summary = ""
     if historical:
@@ -54,6 +55,7 @@ Genera UN mensaje de Telegram para un Operations Manager en campo.
 DATOS DEL EVENTO:
 - Zona: {zone}
 - Nivel de riesgo: {RISK_LABEL.get(risk, risk)}
+- Sensibilidad histórica de la zona: {sensitivity_tier.upper()} (frecuencia con que lluvia genera saturación)
 - Precipitación esperada: {precip} mm/hr en las próximas 2 horas
 - Ratio proyectado: ~{projected_ratio} (umbral de saturación: 1.8)
 - Earnings actual: {earnings_rec['current_baseline_earnings']:.0f} MXN
@@ -120,6 +122,7 @@ def _fallback_message(alert: dict[str, Any]) -> str:
     earnings_rec = alert["earnings_recommendation"]
     secondary = alert.get("secondary_zones", [])
     window = alert.get("action_window_minutes", 60)
+    sensitivity_tier = alert.get("sensitivity_tier", "media")
     emoji = RISK_EMOJI.get(risk, "⚠️")
     label = RISK_LABEL.get(risk, risk)
 
@@ -127,6 +130,7 @@ def _fallback_message(alert: dict[str, Any]) -> str:
 
     return (
         f"{emoji} ALERTA {label} — {zone}\n"
+        f"Sensibilidad de zona: {sensitivity_tier.upper()} | "
         f"Lluvia esperada: {precip:.1f} mm/hr en las próximas 2h\n"
         f"Ratio proyectado: ~{projected_ratio} (SATURACIÓN si supera 1.8)\n"
         f"ACCIÓN: Subir earnings de {earnings_rec['current_baseline_earnings']:.0f} "
@@ -136,9 +140,12 @@ def _fallback_message(alert: dict[str, Any]) -> str:
 
 
 async def generate_daily_summary(
-    events: list[dict[str, Any]], date_str: str
+    events: list[dict[str, Any]],
+    date_str: str,
+    confirmed_count: int = 0,
+    preventive_count: int = 0,
 ) -> str:
-    """Generate an end-of-day summary message."""
+    """Generate an end-of-day summary message with real vs projected breakdown."""
     api_key = os.getenv("GEMINI_API_KEY")
 
     if not events:
@@ -151,9 +158,10 @@ async def generate_daily_summary(
     if not api_key:
         return (
             f"📊 RESUMEN DIARIO — {date_str}\n"
-            f"Eventos totales: {len(events)}\n"
+            f"Eventos totales: {len(events)} | Críticos: {len(critical)} | Altos: {len(high)}\n"
             f"Zonas afectadas: {', '.join(zones_affected)}\n"
-            f"Alertas críticas: {len(critical)} | Alertas altas: {len(high)}\n"
+            f"Lluvia confirmada al momento de alerta: {confirmed_count} evento(s)\n"
+            f"Alertas preventivas (solo pronóstico): {preventive_count} evento(s)\n"
             f"Sistema de alertas operativo ✓"
         )
 
@@ -166,21 +174,28 @@ async def generate_daily_summary(
         events_text = "\n".join(
             [
                 f"  • {e['alert_time'][:16]} — {e['zone']}: riesgo {e['risk_level']}, "
-                f"{e['trigger_precipitation_mm']}mm, ratio proyectado {e['projected_ratio']}"
+                f"{e['trigger_precipitation_mm']}mm pronosticados, "
+                f"{e.get('current_precipitation_mm', 0):.1f}mm presentes al disparar, "
+                f"ratio proyectado {e['projected_ratio']}"
                 for e in events
             ]
         )
 
         prompt = f"""Genera un resumen diario operacional conciso para el equipo de Rappi Monterrey.
-        
+
 Fecha: {date_str}
 Eventos registrados:
 {events_text}
 
+Métricas de impacto real vs proyectado:
+- Alertas con lluvia confirmada al momento de dispararse: {confirmed_count}
+- Alertas solo por pronóstico (lluvia aún no presente): {preventive_count}
+
 El resumen debe:
 - Máximo 8 líneas
-- Incluir número de alertas por nivel
+- Incluir número de alertas por nivel de riesgo
 - Mencionar las zonas más afectadas
+- Incluir la sección "IMPACTO REAL VS PROYECTADO" con los conteos anteriores e interpretación breve
 - Dar una valoración del día operacional
 - Ser en español, tono ejecutivo
 
@@ -193,5 +208,6 @@ Escribe SOLO el mensaje, sin explicaciones."""
         return (
             f"📊 RESUMEN DIARIO — {date_str}\n"
             f"Eventos totales: {len(events)} | Críticos: {len(critical)} | Altos: {len(high)}\n"
-            f"Zonas: {', '.join(zones_affected)}"
+            f"Zonas: {', '.join(zones_affected)}\n"
+            f"Lluvia confirmada: {confirmed_count} | Solo pronóstico: {preventive_count}"
         )

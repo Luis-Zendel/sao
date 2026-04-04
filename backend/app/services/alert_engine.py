@@ -8,6 +8,7 @@ Thresholds and earnings recommendations are derived from RAW_DATA.csv analysis:
 """
 
 import logging
+import os
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -84,6 +85,15 @@ def get_zone_thresholds() -> dict[str, dict]:
     if _zone_thresholds is None:
         _zone_thresholds = _compute_zone_thresholds()
     return _zone_thresholds
+
+
+def _get_sensitivity_tier(vuln_pct: float) -> str:
+    """Classify a zone's historical sensitivity to rain-driven saturation."""
+    if vuln_pct >= 60:
+        return "alta"
+    if vuln_pct >= 30:
+        return "media"
+    return "baja"
 
 
 def _get_risk_level(zone: str, precip_mm: float) -> str:
@@ -202,9 +212,10 @@ def evaluate_alerts(forecast: list[dict]) -> list[dict]:
         if risk in ("ninguno", "bajo"):
             continue
 
-        # Check cooldown
+        # Check cooldown (reads from env at runtime so PUT /api/agent/config takes effect)
+        cooldown_hours = int(os.getenv("ALERT_COOLDOWN_HOURS", ALERT_COOLDOWN_HOURS))
         last_alert = _alert_memory.get(zone)
-        if last_alert and (now - last_alert).total_seconds() < ALERT_COOLDOWN_HOURS * 3600:
+        if last_alert and (now - last_alert).total_seconds() < cooldown_hours * 3600:
             logger.debug(
                 f"Alert for {zone} suppressed (cooldown, last: {last_alert.isoformat()})"
             )
@@ -222,15 +233,17 @@ def evaluate_alerts(forecast: list[dict]) -> list[dict]:
             zone_data.get("baseline_ratio", 1.0) + 0.4 * trigger_precip, 2
         )
 
+        vuln_pct = zone_data.get("vulnerability_pct", 0)
         alert = {
             "zone": zone,
             "risk_level": risk,
+            "sensitivity_tier": _get_sensitivity_tier(vuln_pct),
             "trigger_precipitation_mm": round(trigger_precip, 2),
             "current_precipitation_mm": round(precip_current, 2),
             "forecast_2h_precipitation_mm": round(precip_2h, 2),
             "projected_ratio": projected_ratio,
             "zone_threshold_mm": zone_data.get("precip_threshold", 3.0),
-            "vulnerability_pct": zone_data.get("vulnerability_pct", 0),
+            "vulnerability_pct": vuln_pct,
             "earnings_recommendation": earnings_rec,
             "historical_context": historical,
             "secondary_zones": secondary,

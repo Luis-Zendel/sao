@@ -81,6 +81,7 @@ export default function DashboardPage() {
                 <div className="p-4 border-b border-[var(--border)]">
                   <CardTitle>Estado por Zona</CardTitle>
                   <CardSubtitle>Ratio = Órdenes / Repartidores</CardSubtitle>
+                  <CardSubtitle>Instantánea operativa actual de la última hora disponible</CardSubtitle>
                 </div>
                 <div className="overflow-auto max-h-[400px]">
                   <table className="w-full text-sm">

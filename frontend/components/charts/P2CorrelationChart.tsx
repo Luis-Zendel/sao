@@ -112,10 +112,10 @@ export function P2CorrelationChart({ data }: { data: unknown }) {
                 contentStyle={TT}
                 cursor={{ stroke: "#e2e8f0" }}
                 formatter={(v: unknown, name: unknown) => [
-                  name === "PRECIPITATION_MM"
+                  name === "Precipitación"
                     ? `${(v as number)?.toFixed(2)} mm/hr`
                     : (v as number)?.toFixed(3),
-                  name === "PRECIPITATION_MM" ? "Precipitación" : "Ratio",
+                  name === "Precipitación" ? "Precipitación" : "Ratio",
                 ]}
               />
               <ReferenceLine y={1.8} stroke="#ef4444" strokeDasharray="4 2"

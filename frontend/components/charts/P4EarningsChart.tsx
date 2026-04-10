@@ -10,13 +10,13 @@ const GRID = "#e2e8f0";
 
 interface DailyRecord {
   DATE: string; DAY: number; avg_earnings: number; avg_ratio: number;
-  oversupply_pct: number; saturation_pct: number;
+  oversupply_pct: number; saturation_pct: number; idi: number;
   is_inefficient: boolean; is_underpaid_sat: boolean;
 }
 interface P4Data {
   daily_timeline: DailyRecord[];
   inefficient_days: number[]; underpaid_saturation_days: number[];
-  thresholds: { earnings_p75: number; earnings_p25: number };
+  thresholds: { earnings_p75: number; earnings_p25: number; idi_p75: number; oversupply_threshold_pct: number };
   key_findings: { inefficient_count: number; underpaid_count: number; explanation: string };
 }
 
@@ -30,6 +30,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       <p className="text-[#FF441F]">Earnings: {d.avg_earnings.toFixed(1)} MXN</p>
       <p className="text-blue-500">Ratio: {d.avg_ratio.toFixed(3)}</p>
       <p className="text-yellow-600 dark:text-yellow-400">Sobre-oferta: {d.oversupply_pct.toFixed(0)}%</p>
+      {d.idi !== undefined && (
+        <p className="text-slate-500 dark:text-slate-400">IDI: {d.idi.toFixed(2)}</p>
+      )}
       {d.is_inefficient    && <p className="text-yellow-600 dark:text-yellow-400 font-bold">⚠ Gasto ineficiente</p>}
       {d.is_underpaid_sat  && <p className="text-red-500 font-bold">⚠ Incentivo insuficiente</p>}
     </div>
@@ -43,6 +46,58 @@ export function P4EarningsChart({ data }: { data: unknown }) {
 
   return (
     <div className="space-y-5">
+
+      {/* ── Por qué estos días fueron mal calibrados ── */}
+      <div className="rounded-xl border border-amber-200 dark:border-amber-500/25 bg-amber-50/60 dark:bg-amber-500/5 p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <span className="text-amber-600 dark:text-amber-400 text-base">📉</span>
+          <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+            ¿Por qué un día con alto earnings fue un gasto mal manejado?
+          </p>
+        </div>
+        <p className="text-xs text-[var(--txt-2)] leading-relaxed">
+          El <span className="font-semibold text-[var(--txt-1)]">earnings</span> es el incentivo económico que Rappi ofrece a los repartidores para atraerlos a conectarse.
+          Cuando está calibrado correctamente, sube cuando hay saturación (muchos pedidos, pocos repartidores)
+          y baja cuando hay sobre-oferta (pocos pedidos, muchos repartidores conectados).
+          <br className="mb-1" />
+          Un día con <span className="font-semibold text-amber-700 dark:text-amber-400">earnings alto pero sobre-oferta persistente</span> revela
+          una desconexión: el equipo pagó incentivos fuertes para traer repartidores que ya estaban ahí —
+          o que llegaron pero no encontraron pedidos. Cada hora de sobre-oferta con incentivo elevado
+          es gasto puro sin retorno operacional.
+        </p>
+
+        {/* Fórmula IDI */}
+        <div className="rounded-lg border border-amber-200 dark:border-amber-500/20 bg-white dark:bg-[var(--surface-2)] p-3 space-y-2">
+          <p className="text-[10px] font-semibold text-[var(--txt-3)] uppercase tracking-wider">
+            Criterio de detección — Índice de Desperdicio de Incentivo (IDI)
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <code className="text-xs font-mono font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-500/10 px-2 py-1 rounded">
+              IDI = avg_earnings × (oversupply_pct ÷ 100)
+            </code>
+            <span className="text-[10px] text-[var(--txt-3)]">→ umbral: IDI ≥ p75 mensual ({thresh.idi_p75?.toFixed(1) ?? "—"})</span>
+          </div>
+          <p className="text-[11px] text-[var(--txt-3)] leading-relaxed">
+            El IDI combina <span className="font-medium text-[var(--txt-2)]">cuánto se pagó</span> con{" "}
+            <span className="font-medium text-[var(--txt-2)]">qué tan frecuente fue la sobre-oferta</span> en un solo número continuo.
+            Un día es marcado como ineficiente si su IDI supera el cuartil superior del mes.
+            Esto elimina umbrales fijos arbitrarios: la vara es relativa a la propia operación del período.
+          </p>
+          <div className="grid grid-cols-3 gap-2 pt-1">
+            {[
+              { title: "Antes (umbrales separados)", desc: "earnings ≥ p75 AND sobre-oferta ≥ 30%", icon: "⚠️", color: "text-slate-500" },
+              { title: "Limitación", desc: "La magnitud no influía: 31% = 80% de sobre-oferta", icon: "✗", color: "text-red-500" },
+              { title: "IDI (nueva)", desc: "Un número que crece con ambas dimensiones a la vez", icon: "✓", color: "text-green-600 dark:text-green-400" },
+            ].map((item) => (
+              <div key={item.title} className="rounded-md bg-[var(--surface-2)] p-2">
+                <p className={`text-[10px] font-bold mb-1 ${item.color}`}>{item.icon} {item.title}</p>
+                <p className="text-[10px] text-[var(--txt-3)] leading-tight">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: "Días gasto ineficiente",    val: kf.inefficient_count, sub: "Earnings alto + sobre-oferta",    color: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-50 dark:bg-yellow-500/10", border: "border-yellow-200 dark:border-yellow-500/20" },

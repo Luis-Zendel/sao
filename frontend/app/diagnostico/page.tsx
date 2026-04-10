@@ -17,7 +17,7 @@ const SECTIONS = [
   { id: "p1", q: "P1", title: "¿En qué horas y zonas alcanza niveles críticos de saturación?",      sub: "Heatmap hora × zona del ratio promedio y porcentaje de saturación" },
   { id: "p2", q: "P2", title: "¿Qué variable externa se correlaciona con el deterioro del ratio?",  sub: "Correlación precipitación vs ratio — regresión y análisis por tramos" },
   { id: "p3", q: "P3", title: "¿Todas las zonas responden igual a la lluvia?",                       sub: "Sensibilidad por zona — radar de vulnerabilidad operacional" },
-  { id: "p4", q: "P4", title: "¿El nivel de earnings está bien calibrado a lo largo del mes?",      sub: "Timeline diario con días de gasto ineficiente marcados" },
+  { id: "p4", q: "P4", title: "¿El nivel de earnings está bien calibrado a lo largo del mes?",      sub: "IDI (Índice de Desperdicio de Incentivo) · días donde se pagó de más sin justificación operacional" },
   { id: "p5", q: "P5", title: "¿Qué relación tiene el nivel de earnings con la saturación?",         sub: "Boxplot earnings × ratio por contexto climático — relación no lineal" },
 ] as const;
 

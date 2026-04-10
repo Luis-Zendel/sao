@@ -18,9 +18,15 @@ def get_bot_config() -> tuple[str | None, str | None]:
     return token, chat_id
 
 
-async def send_message(text: str, parse_mode: str = "HTML") -> dict[str, Any]:
-    """Send a message to the configured Telegram chat."""
-    token, chat_id = get_bot_config()
+async def send_message(
+    text: str,
+    parse_mode: str = "HTML",
+    chat_id_override: str | None = None,
+) -> dict[str, Any]:
+    """Send a message to the configured Telegram chat (or chat_id_override)."""
+    token, configured_chat_id = get_bot_config()
+
+    chat_id = chat_id_override or configured_chat_id
 
     if not token or not chat_id:
         logger.warning("Telegram not configured (TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID missing)")

@@ -59,6 +59,9 @@ export const updateAgentConfig = (config: Partial<AgentConfigPayload>) =>
     body: JSON.stringify(config),
   });
 
+export const performEvaluation = () =>
+  apiFetch<EvaluationResult>("/api/agent/perform-evaluation", { method: "POST" });
+
 // GeoJSON types
 export interface ZoneGeoJSONProperties {
   zone: string;
@@ -211,4 +214,31 @@ export interface AgentConfigPayload {
   telegram_chat_id: string;
   alert_cooldown_hours: number;
   scheduler_interval_minutes: number;
+}
+
+export interface ZoneEvaluation {
+  zone: string;
+  risk_level: "ninguno" | "bajo" | "medio" | "alto" | "critico";
+  sensitivity_tier: string;
+  current_precipitation_mm: number;
+  max_2h_precipitation_mm: number;
+  trigger_precipitation_mm: number;
+  zone_threshold_mm: number;
+  vulnerability_pct: number;
+  baseline_earnings: number;
+  recommended_earnings: number;
+  earnings_delta: number;
+  hourly_next_2h: Array<{ time: string; precipitation_mm: number; hours_ahead: number }>;
+  error: string | null;
+}
+
+export interface EvaluationResult {
+  status: string;
+  message: string;
+  telegram_sent: boolean;
+  telegram_error?: string | null;
+  zones: ZoneEvaluation[];
+  zones_count: number;
+  timestamp: string;
+  error?: string;
 }

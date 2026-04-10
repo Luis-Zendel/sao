@@ -7,11 +7,13 @@ from pydantic import BaseModel
 
 from ..services.agent import (
     run_agent_cycle,
+    run_full_evaluation,
     send_daily_summary,
     get_agent_logs,
     get_agent_status,
 )
 from ..services.telegram_bot import send_message, test_connection, detect_chat_id
+from ..services.chat_service import get_chat_history, clear_chat_history
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/agent", tags=["agent"])
@@ -45,6 +47,19 @@ def agent_status():
 def agent_logs(limit: int = Query(100, le=500)):
     """Return agent activity log."""
     return {"logs": get_agent_logs(limit), "total": limit}
+
+
+@router.post("/perform-evaluation")
+async def perform_evaluation():
+    """
+    Full on-demand evaluation: fetches fresh precipitation data for all zones,
+    generates a holistic LLM summary with risk levels, and sends it to Telegram.
+    """
+    try:
+        result = await run_full_evaluation()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/daily-summary")
@@ -90,6 +105,20 @@ async def test_telegram():
         return bot_info
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/chat-history")
+def chat_history():
+    """Return the in-memory bidirectional chat history."""
+    history = get_chat_history()
+    return {"history": history, "total": len(history)}
+
+
+@router.post("/clear-chat")
+def clear_chat():
+    """Clear the in-memory bidirectional chat conversation history."""
+    clear_chat_history()
+    return {"status": "cleared"}
 
 
 @router.put("/config")

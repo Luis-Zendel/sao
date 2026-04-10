@@ -88,6 +88,14 @@ export const RISK_CONFIG = {
     badge: "bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/30",
     icon: "🟡",
   },
+  ninguno: {
+    label: "SIN LLUVIA",
+    color: "text-[var(--txt-3)]",
+    bg: "bg-[var(--surface-2)]",
+    border: "border-[var(--border)]",
+    badge: "bg-[var(--surface-2)] text-[var(--txt-3)] border-[var(--border)]",
+    icon: "⚪",
+  },
 } as const;
 
 export function formatRatio(ratio: number): string {

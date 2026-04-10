@@ -11,8 +11,8 @@ from datetime import datetime, date
 from typing import Any
 
 from .weather import get_cached_forecast, fetch_all_zones_forecast
-from .alert_engine import evaluate_alerts, get_zone_thresholds
-from .llm import generate_alert_message, generate_daily_summary
+from .alert_engine import evaluate_alerts, evaluate_all_zones, get_zone_thresholds
+from .llm import generate_alert_message, generate_daily_summary, generate_evaluation_summary
 from .telegram_bot import send_message
 
 logger = logging.getLogger(__name__)
@@ -135,7 +135,7 @@ async def run_agent_cycle(force_refresh: bool = False) -> dict[str, Any]:
 
 
 async def send_daily_summary() -> dict[str, Any]:
-    """Send an end-of-day summary to Telegram."""
+    """Send an end-of-day summary to Telegram including a live zone snapshot."""
     today = date.today().strftime("%d/%m/%Y")
     today_events = [
         e for e in _daily_events
@@ -146,8 +146,16 @@ async def send_daily_summary() -> dict[str, Any]:
     confirmed = [e for e in today_events if e.get("current_precipitation_mm", 0) > 0]
     preventive = [e for e in today_events if e.get("current_precipitation_mm", 0) == 0]
 
+    # Always fetch a fresh zone snapshot so the summary has live precipitation data
+    try:
+        forecast = await fetch_all_zones_forecast()
+        zones_snapshot = evaluate_all_zones(forecast)
+    except Exception as e:
+        logger.warning(f"Could not fetch zone snapshot for daily summary: {e}")
+        zones_snapshot = []
+
     message = await generate_daily_summary(
-        today_events, today, len(confirmed), len(preventive)
+        today_events, today, len(confirmed), len(preventive), zones_snapshot
     )
     result = await send_message(message)
 
@@ -160,6 +168,54 @@ async def send_daily_summary() -> dict[str, Any]:
     _daily_events.clear()
 
     return {"status": "ok", "message": message, "events_summarized": len(today_events)}
+
+
+async def run_full_evaluation() -> dict[str, Any]:
+    """
+    On-demand full evaluation pipeline:
+    1. Fresh weather fetch (all zones, no cache)
+    2. Risk assessment for every zone (no cooldown filter)
+    3. Single holistic summary via Gemini
+    4. Send to Telegram
+    """
+    started_at = datetime.now()
+
+    try:
+        logger.info("Full evaluation: fetching fresh weather data")
+        forecast = await fetch_all_zones_forecast()
+        _log_event("evaluation_weather_fetch", {"zones_fetched": len(forecast)})
+
+        logger.info("Full evaluation: computing risk for all zones")
+        zones_data = evaluate_all_zones(forecast)
+
+        timestamp = started_at.strftime("%d/%m/%Y %H:%M")
+        logger.info("Full evaluation: generating LLM summary")
+        message = await generate_evaluation_summary(zones_data, timestamp)
+        _log_event("evaluation_summary_generated", {"message_length": len(message)})
+
+        logger.info("Full evaluation: sending to Telegram")
+        telegram_result = await send_message(message)
+        telegram_sent = telegram_result.get("ok", False)
+
+        _log_event(
+            "evaluation_sent" if telegram_sent else "evaluation_telegram_failed",
+            {"sent": telegram_sent, "error": telegram_result.get("error")},
+        )
+
+        return {
+            "status": "ok",
+            "message": message,
+            "telegram_sent": telegram_sent,
+            "telegram_error": telegram_result.get("error") if not telegram_sent else None,
+            "zones": zones_data,
+            "zones_count": len(zones_data),
+            "timestamp": started_at.isoformat(),
+        }
+
+    except Exception as e:
+        logger.error(f"Full evaluation error: {e}")
+        _log_event("evaluation_error", {"error": str(e)})
+        return {"status": "error", "error": str(e), "telegram_sent": False}
 
 
 def get_agent_logs(limit: int = 100) -> list[dict]:

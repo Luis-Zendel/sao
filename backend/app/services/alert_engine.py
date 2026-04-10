@@ -258,6 +258,46 @@ def evaluate_alerts(forecast: list[dict]) -> list[dict]:
     return alerts
 
 
+def evaluate_all_zones(forecast: list[dict]) -> list[dict]:
+    """
+    Evaluate risk for ALL zones without cooldown filtering or minimum risk threshold.
+    Used for full evaluation snapshots (vs evaluate_alerts which only returns active alerts).
+    """
+    results = []
+    for zone_forecast in forecast:
+        zone = zone_forecast["zone"]
+        precip_2h = zone_forecast.get("max_2h_precipitation_mm", 0)
+        precip_current = zone_forecast.get("current_precipitation_mm", 0)
+        error = zone_forecast.get("error")
+
+        trigger_precip = max(precip_2h, precip_current)
+        risk = _get_risk_level(zone, trigger_precip)
+
+        thresholds = get_zone_thresholds()
+        zone_data = thresholds.get(zone, {})
+        vuln_pct = zone_data.get("vulnerability_pct", 0)
+        earnings_rec = _compute_recommended_earnings(zone, trigger_precip)
+        hourly = zone_forecast.get("hourly_forecast", [])
+
+        results.append({
+            "zone": zone,
+            "risk_level": risk,
+            "sensitivity_tier": _get_sensitivity_tier(vuln_pct),
+            "current_precipitation_mm": round(precip_current, 2),
+            "max_2h_precipitation_mm": round(precip_2h, 2),
+            "trigger_precipitation_mm": round(trigger_precip, 2),
+            "zone_threshold_mm": zone_data.get("precip_threshold", 3.0),
+            "vulnerability_pct": vuln_pct,
+            "baseline_earnings": zone_data.get("baseline_earnings", 55.0),
+            "recommended_earnings": earnings_rec["recommended_earnings"],
+            "earnings_delta": earnings_rec["delta"],
+            "hourly_next_2h": hourly[:3],
+            "error": error,
+        })
+
+    return results
+
+
 def get_alert_memory() -> list[dict]:
     """Return current alert memory state (for debugging/display)."""
     return [

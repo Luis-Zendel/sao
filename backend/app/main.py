@@ -59,6 +59,18 @@ async def lifespan(app: FastAPI):
         name="Daily Summary",
     )
 
+    # Bidirectional chat: poll incoming Telegram messages every 10 seconds
+    from .services.chat_service import poll_new_messages
+
+    scheduler.add_job(
+        poll_new_messages,
+        "interval",
+        seconds=10,
+        id="chat_polling",
+        name="Telegram Chat Polling",
+        max_instances=1,
+    )
+
     scheduler.start()
     set_agent_running(True)
     logger.info(f"Scheduler started: alert cycle every {scheduler_interval} min ✓")
